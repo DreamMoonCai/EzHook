@@ -24,7 +24,11 @@ class EzHookExtension: IrLoweringHookExtension {
 }
 
 data class EzHookInfo(val functions: MutableList<Function> = mutableListOf(),val property: MutableList<Property> = mutableListOf()) {
-    data class Function(val function: IrFunction, val targetFunctionFqName: String, val inline: Boolean)
+    data class Function(val function: IrFunction, val targetFunctionFqName: String, val inline: Boolean,val isInitializeProperty: Boolean,val isBefore: Boolean,val isAfter: Boolean,val isNull: Boolean) {
+        val isReplace: Boolean = !isBefore && !isAfter
+    }
 
-    data class Property(val property: IrProperty, val targetPropertyFqName: String, val inline: Boolean)
+    data class Property(val property: IrProperty, val targetPropertyFqName: String, val inline: Boolean,val isBefore: Boolean,val isAfter: Boolean,val isNull: Boolean) {
+        val isReplace: Boolean = !isBefore && !isAfter
+    }
 }

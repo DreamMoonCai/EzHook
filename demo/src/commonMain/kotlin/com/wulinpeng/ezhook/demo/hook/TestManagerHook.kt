@@ -3,14 +3,17 @@ package com.wulinpeng.ezhook.demo.hook
 import com.wulinpeng.ezhook.demov2.NormalTest
 import com.wulinpeng.ezhook.runtime.EzHook
 import com.wulinpeng.ezhook.runtime.callOrigin
+import com.wulinpeng.ezhook.runtime.getField
+import com.wulinpeng.ezhook.runtime.getThisProperty
 import com.wulinpeng.ezhook.runtime.getThisRef
+import com.wulinpeng.ezhook.runtime.setField
+import com.wulinpeng.ezhook.runtime.setThisProperty
 import kotlin.time.DurationUnit
 
 // TODO support constructor
-@EzHook("com.wulinpeng.ezhook.demov2.NormalTest.<init>")
+@EzHook("com.wulinpeng.ezhook.demov2.NormalTest.<init>",true)
 fun hookContructor(name: String) {
-    var name = "newName"
-    callOrigin<Unit>()
+    callOrigin<Unit>("newName")
 }
 
 @EzHook("com.wulinpeng.ezhook.demov2.topLevelPropertyTest")
@@ -29,25 +32,26 @@ var newTestProperty = "777777"
 
 @EzHook("com.wulinpeng.ezhook.demov2.NormalTest.test", true)
 fun newTest(name: String): String {
-    var name = "newName"
-    return "before hook: ${callOrigin<String>()}, after hook: $name-2"
+    return "before hook: ${callOrigin<String>("newName")}, after hook: $name-2"
 }
 
 @EzHook("com.wulinpeng.ezhook.demov2.NormalTest.testGetThis", true)
 fun newTestGetThis(name: String): String {
-    var name = "newName"
     return "get hook in this: ${getThisRef<NormalTest>()}, to $name"
+}
+
+@EzHook("com.wulinpeng.ezhook.demov2.NormalTest.testReParam", true)
+fun newTestReParam(name: String,age: Int): String {
+    return "get hook in this: ${callOrigin<String>(p1 = 800)}, after $name,age: $age"
 }
 
 @EzHook("com.wulinpeng.ezhook.demov2.topLevelFunctionTest", true)
 fun topLevelFunctionTest(name: String): String {
-    var name = "newName"
-    return "before hook: ${callOrigin<String>()}, after hook: $name-2"
+    return "before hook: ${callOrigin<String>("newName")}, after hook: $name-2"
 }
 
 @EzHook("kotlin.time.Duration.toInt", true)
 fun toInt(unit: DurationUnit): Int {
-    val unit = DurationUnit.HOURS
     println("Hook to int")
     return 10086
 }
@@ -57,4 +61,15 @@ fun toInt(unit: DurationUnit): Int {
 @EzHook("com.wulinpeng.ezhook.demov2.getStr")
 fun Int.getStr(): String {
     return "${callOrigin<String>()}-new2"
+}
+
+// TODO Delegated property
+@EzHook.Before("com.wulinpeng.ezhook.demov2.NormalTest.testLazy", true)
+val testLazy get() = run {
+    println("thisRef:" + getThisRef())
+    println("originalDelegated: " + getField<Any>()::class)
+    println("originalGetter: " + callOrigin())
+    println("getThisProperty:" + getThisProperty("testProperty"))
+    setThisProperty("testProperty", "new hook testProperty")
+    setField(lazy { "new hook testLazy" })
 }

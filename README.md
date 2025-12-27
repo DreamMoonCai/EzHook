@@ -2,8 +2,8 @@
 ---
 
 # EzHook
-EzHook is an AOP (Aspect-Oriented Programming) framework for Kotlin Multiplatform, supporting **Kotlin/Native** and **Kotlin/JS**.  
-It allows you to replace any function, constructor, or property behavior at compile time, with zero runtime reflection and no performance loss.
+EzHook is an AOP (Aspect‑Oriented Programming) framework for Kotlin Multiplatform, supporting **Kotlin/Native** and **Kotlin/JS**.  
+It replaces functions, constructors, and properties at **compile time**, with **zero runtime reflection** and **no performance cost**.
 
 [中文](./README.zh.md)
 
@@ -11,17 +11,16 @@ It allows you to replace any function, constructor, or property behavior at comp
 
 ## Project Configuration
 
----
-
 EzHook consists of two components:
 
 1. **Gradle Plugin**  
-   Collects hook metadata and performs IR-level transformation.
+   Performs IR transformations and integrates hooks into target modules.
 2. **Runtime Library**  
-   Provides annotations, callOrigin(), getThisRef(), and other utilities.
+   Provides annotations, callOrigin(), getThisRef(), getField(), and other helper APIs.
 
-### 1. Apply the Gradle Plugin
-Add it to your root `build.gradle.kts`:
+---
+
+## 1. Apply the Gradle Plugin
 
 ```kotlin
 buildscript {
@@ -35,7 +34,9 @@ plugins {
 }
 ```
 
-### 2. Add the Runtime Library
+---
+
+## 2. Add the Runtime Library
 
 ```kotlin
 kotlin {
@@ -47,8 +48,9 @@ kotlin {
 }
 ```
 
-### 3. Disable Kotlin/Native caching
-EzHook transforms IR modules, so K/N caching must be disabled:
+---
+
+## 3. Disable Kotlin/Native caching
 
 ```properties
 kotlin.native.cacheKind=none
@@ -56,25 +58,31 @@ kotlin.native.cacheKind=none
 
 ---
 
-## Usage Overview
+# Usage Overview
 
-EzHook works similarly to [Lancet](https://github.com/eleme/lancet), but for Kotlin Multiplatform.
+EzHook works similarly to Lancet, but for Kotlin Multiplatform IR.
 
-You create a hook function and annotate it with `@EzHook`, specifying the fully qualified name (FQN) of the target function, constructor, or property.
+A hook is simply:
+
+- A **top‑level function or property**
+- Annotated with `@EzHook`, `@EzHook.Before`, `@EzHook.After`, or `@EzHook.NULL`
+- The annotation specifies the fully qualified name of the target
 
 ---
 
-## Hooking Functions
+# Hooking Functions
 
 A hook function must:
 
-- Have the same parameter list as the target
-- Have the same return type
 - Be a **top‑level function**
-- Optionally call the original function via `callOrigin<T>()`
-- Optionally override parameters by creating a variable with the same name and type
+- Have the **same parameter list** as the target
+- Have the **same return type**
+- Optionally override parameters (same name, same type)
+- Optionally call the original via `callOrigin()`
 
-### Example
+---
+
+## Basic Function Hook
 
 ```kotlin
 @HiddenFromObjC
@@ -85,162 +93,262 @@ fun toInt(unit: DurationUnit): Int {
 }
 ```
 
-This completely overrides `Duration.toInt()`.
-
 ---
 
-## Calling the Original Method
-
-EzHook supports calling the original function while modifying its parameters.
-
-### Parameter Override + callOrigin()
+## Overriding Parameters and Calling Origin
 
 ```kotlin
 @EzHook("kotlin.time.Duration.toInt")
 fun toInt(unit: DurationUnit): Int {
-    val unit = DurationUnit.HOURS   // override parameter
-    return callOrigin<Int>()
+    val unit = DurationUnit.HOURS
+    return callOrigin<Int>()   // now uses HOURS
 }
 ```
 
-`callOrigin()` will use the overridden parameter.
+`callOrigin()` always uses the **current overridden parameters**.
 
 ---
 
-## Hooking Constructors
+## Calling Origin with Custom Arguments
 
-EzHook now supports full constructor hooking.  
-To hook a constructor:
+```kotlin
+return callOrigin<Int>(null, 123, "xyz")
+```
+
+- Unspecified parameters → use original call args
+- Specified parameters → forced override
+- Passing `null` must be explicit
+
+---
+
+# Hooking Constructors
+
+EzHook supports primary and secondary constructors.
 
 ```kotlin
 @EzHook("com.example.MyClass.<init>")
 fun hookConstructor(name: String) {
     val name = "Modified"
-    callOrigin<Unit>()  // invokes the original constructor with new args
+    callOrigin<Unit>()
 }
 ```
 
-### Notes
+### Important Notes
 
-- Constructors have implicit `this`—use `getThisRef<T>()` to access it.
-- Property initializers and `init {}` blocks will still run.
-- Parameter override works the same as normal function hooks.
-
----
-
-## getThisRef(): Accessing the Current Instance
-
-You can access `this` inside hook functions (including constructors):
-
-```kotlin
-getThisRef<NormalTest>()
-```
-
-Example:
-
-```kotlin
-@EzHook("com.example.MyClass.test")
-fun newTest(name: String): String {
-    val self = getThisRef<MyClass>()
-    return "value = ${self.someProp}"
-}
-```
+- Constructors have `this` → use `getThisRef<T>()`
+- `isInitializeProperty` controls **whether Kotlin property initializers run before the hook**
+- Only the **primary constructor** responds to `isInitializeProperty`
+- `init {}` blocks run *only if* you call the original constructor
 
 ---
 
-## Hooking Properties
+# Accessing `this`
 
-EzHook supports replacing:
+```kotlin
+val self = getThisRef<MyClass>()
+```
+
+Works for:
+
+- Member functions
+- Constructors
+- Property getter/setter hooks
+
+Not available for top‑level functions.
+
+---
+
+# Hooking Properties
+
+EzHook can hook:
 
 - getter
 - setter
-- backing field initializer
+- full var property
+- top‑level properties
+- delegated properties
 
-### Example
+---
+
+## Property Hook Example
 
 ```kotlin
 @EzHook("com.example.MyClass.prop")
 var newProp = "777777"
     get() = callOrigin<String>() + "3333"
-    set(value) { field = value + "22222" }
+    set(value) { setField(value + "22222") }
 ```
 
-### Supported behaviors
+### Behaviour Notes
 
-- Hook getter only
-- Hook setter only
-- Hook both
-- Hook top‑level properties
-- Inline hook properties for JS
+- `getField()` / `setField()` access the backing field
+- For delegated properties, they return **the delegate object itself**
+- Under property hooking rules, **initializers are removed** if they contain runtime calls (getThisRef, etc.)
 
 ---
 
-## Inline Hooks (Recommended for Kotlin/JS)
-
-Kotlin/JS is sensitive to circular dependencies.  
-Inlining the hook avoids inter-module calls and is safer.
+# Hooking Getter Only
 
 ```kotlin
-@EzHook("kotlin.time.Duration.toInt", true)
-fun toInt(unit: DurationUnit): Int {
-    val unit = DurationUnit.HOURS
-    return callOrigin<Int>()
+@EzHook.Before("com.example.MyClass.prop.get")
+fun beforeGet() {
+    println("before getter")
 }
 ```
 
-When inline = true:
+# Hooking Setter Only
 
-- The hook function is copied into the target module
-- No cross-module linking happens
-- Greatly improved stability on JS
+```kotlin
+@EzHook.After("com.example.MyClass.prop.set")
+fun afterSet(value: String) {
+    println("setter finished with $value")
+}
+```
 
 ---
 
-## Top‑Level Function and Property Hooking
+# Before / After Hooks
 
-Also fully supported:
+### Before Hook
+Runs before the target method/constructor/property.
 
 ```kotlin
-@EzHook("com.example.topLevelFunctionTest")
-fun topLevelFunctionTest(name: String): String {
+@EzHook.Before("com.example.MyClass.test")
+fun beforeTest(name: String) {
+    println("before test")
+}
+```
+
+### After Hook
+Runs after the target.  
+If it returns a non‑Unit value → overrides the target’s return value.
+
+```kotlin
+@EzHook.After("com.example.MyClass.test")
+fun afterTest(name: String): String {
+    return "hooked result"
+}
+```
+
+---
+
+# NULL Hooks
+
+NULL hooks replace the target and force it to return null.
+
+```kotlin
+@EzHook.NULL("com.example.MyClass.loadData")
+fun forceNull() = null
+```
+
+### Constructor NULL Hook Rules
+
+- Constructor body **does not run**
+- `init {}` blocks never run
+- Controlled by `isInitializeProperty`:
+   - true → Kotlin property initializers run
+   - false → they remain **uninitialized null**, even if non‑nullable  
+     (K/N may crash if accessed)
+
+---
+
+# Accessing Backing Field
+
+### getField()
+
+```kotlin
+val old = getField<String>()
+```
+
+### setField()
+
+```kotlin
+setField(value + " modified")
+```
+
+Delegated property case:
+
+- `getField()` returns the **delegate instance**, not its internal value.
+
+---
+
+# Accessing `this` Properties
+
+### getThisProperty
+
+```kotlin
+val username = getThisProperty<String>("username")
+```
+
+### setThisProperty
+
+```kotlin
+setThisProperty("count", 5)
+```
+
+If isBackingField = true → operate on the backing field instead of the getter/setter.
+
+---
+
+# Top‑Level Hooking
+
+Full support.
+
+```kotlin
+@EzHook("com.example.topLevelFunction")
+fun topLevelFunction(name: String): String {
     val name = "override"
-    return "before: ${callOrigin<String>()}, after: $name"
+    return "origin: ${callOrigin<String>()}, new: $name"
 }
 ```
 
-Top-level property:
+Top‑level property:
 
 ```kotlin
 @EzHook("com.example.topLevelProp")
 var topLevelProp = "666"
-    get() = field + "444"
-    set(value) { field = value + "555" }
+    get() = getField<String>() + "444"
+    set(value) { setField(value + "555") }
 ```
 
 ---
 
-## Extension Function Hooking
-
-Example:
+# Extension Function Hooking
 
 ```kotlin
 @EzHook("com.example.getStr")
 fun Int.getStr(): String {
-    return "${callOrigin<String>()}-new2"
+    return callOrigin<String>() + "-new2"
 }
 ```
 
 ---
 
-## Limitations
+# Inline Hooks (Recommended for Kotlin/JS)
 
-Current technical limitations:
+Inline mode eliminates cross‑module linking:
 
-- Supported targets: **Kotlin/Native** and **Kotlin/JS**
-- Kotlin/JVM is not supported
-- Kotlin 2.3.0 only (IR APIs change frequently)
-- Hook methods must be **top-level**
-- Must include `@HiddenFromObjC` when hooking in K/N + iOS
-- Inline mode recommended for Kotlin/JS
+```kotlin
+@EzHook("kotlin.time.Duration.toInt", inline = true)
+fun toInt(unit: DurationUnit): Int {
+    return callOrigin<Int>()
+}
+```
+
+Use inline = true when:
+
+- Target is JS
+- Circular deps might occur
+- You need maximal compatibility
 
 ---
+
+# Limitations
+
+- Supported platforms: **Kotlin/Native**, **Kotlin/JS**
+- JVM is not supported
+- Requires Kotlin 2.3.0
+- Hooks must be **top‑level**
+- For iOS: use `@HiddenFromObjC`
+- Property initializers that reference EzHook runtime APIs are removed
+- Delegated property initializer logic cannot be executed inside hook

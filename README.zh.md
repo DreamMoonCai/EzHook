@@ -2,21 +2,23 @@
 ---
 
 # EzHook
-EzHook 是一个面向 Kotlin Multiplatform 的 AOP（面向切面编程）框架，支持 **Kotlin/Native** 和 **Kotlin/JS**。  
-它允许你在 **编译期** 替换任意函数、constructor 或 property 的行为，无需运行时反射，并且没有性能损耗。
+EzHook 是一个适用于 Kotlin Mult平台（Kotlin Multiplatform）的 **AOP（面向切面编程）框架**，支持 **Kotlin/Native** 和 **Kotlin/JS**。  
+EzHook 能在 **编译期** 替换任意函数、构造方法、属性的行为，无需运行时反射，性能零损耗。
 
 ---
 
-## 项目配置
+## 工程配置
 
-EzHook 包含两个核心部分：
+EzHook 由两部分组成：
 
-1. **Gradle Plugin**  
-   负责收集 hook 元数据与执行 IR transform。
-2. **Runtime Library**  
-   提供注解、callOrigin()、getThisRef() 等运行时辅助方法。
+1. **Gradle 插件**  
+   收集 Hook 元数据并执行 IR 层的代码注入。
+2. **Runtime 运行时库**  
+   提供注解、callOrigin()、getThisRef()、getField() 等工具方法。
 
-### 1. 在根项目中应用 Gradle Plugin
+---
+
+## 1. 添加 Gradle 插件
 
 ```kotlin
 buildscript {
@@ -30,7 +32,9 @@ plugins {
 }
 ```
 
-### 2. 在使用 EzHook 的模块中加入 runtime 依赖
+---
+
+## 2. 添加运行时库
 
 ```kotlin
 kotlin {
@@ -42,9 +46,11 @@ kotlin {
 }
 ```
 
-### 3. 禁用 Kotlin/Native 缓存
+---
 
-EzHook 会修改 IR，因此 K/N 缓存必须关闭：
+## 3. 禁用 Kotlin/Native 缓存
+
+EzHook 对 IR 模块进行变换，Native 模式必须关闭缓存。
 
 ```properties
 kotlin.native.cacheKind=none
@@ -52,31 +58,31 @@ kotlin.native.cacheKind=none
 
 ---
 
-## 使用方式概览
+# 使用概览
 
-EzHook 的使用方式类似 [Lancet](https://github.com/eleme/lancet)，但它适用于 Kotlin Multiplatform。
+EzHook 的使用方式与 Lancet 类似，但面向 Kotlin Multiplatform IR。
 
-你只需要：
+你需要：
 
-- 创建一个 hook 函数
-- 使用 `@EzHook` 注解
-- 指定目标方法 / 构造函数 / 属性的 FQN（Fully Qualified Name）
-
-EzHook 会在编译期替换对应逻辑。
+- 编写一个 **顶层函数（top‑level）或属性**
+- 使用 `@EzHook` / `@EzHook.Before` / `@EzHook.After` / `@EzHook.NULL`
+- 在注解中提供目标方法、构造、属性的 **完整 FQN 名称**
 
 ---
 
-## Hook 普通函数
+# Hook 普通函数
 
-Hook 函数必须满足：
+Hook 方法要求：
 
-- 参数列表与目标函数一致
-- 返回类型一致
-- 必须是 top‑level 函数
-- 可以使用 `callOrigin<T>()` 调用原函数
-- 可以创建同名局部变量覆盖参数
+- 必须是 **顶层函数**
+- 参数列表必须与目标一致
+- 返回值类型必须一致
+- 可以按同名同类型变量覆盖原参数
+- 可使用 `callOrigin()` 调用原方法
 
-### 示例
+---
+
+## 示例：完全替换方法
 
 ```kotlin
 @HiddenFromObjC
@@ -87,161 +93,265 @@ fun toInt(unit: DurationUnit): Int {
 }
 ```
 
-此 hook 会完全替换 `Duration.toInt()`。
-
 ---
 
-## 调用原函数：callOrigin()
-
-EzHook 支持调用原方法，并可在 callOrigin 前修改参数。
-
-### 参数覆盖 + callOrigin()
+## 覆盖参数 + 调用原方法
 
 ```kotlin
 @EzHook("kotlin.time.Duration.toInt")
 fun toInt(unit: DurationUnit): Int {
-    val unit = DurationUnit.HOURS   // 覆盖原参数
-    return callOrigin<Int>()
+    val unit = DurationUnit.HOURS   // 覆盖参数
+    return callOrigin<Int>()        // callOrigin() 会使用覆盖后的参数
 }
 ```
 
-callOrigin() 会使用你覆盖后的参数。
+---
+
+## 使用 callOrigin 传入自定义参数
+
+```kotlin
+return callOrigin<Int>(null, 123, "xyz")
+```
+
+行为规则：
+
+- 未显式传参 → 使用原始参数
+- 显式传参 → 覆盖原参数
+- 若需传 null → 必须明确写 null
 
 ---
 
-## Hook constructor
+# Hook 构造方法（Constructor Hook）
 
-EzHook 支持对 constructor 进行完整 hook。
-
-### 示例
+EzHook 支持主构造与次构造。
 
 ```kotlin
 @EzHook("com.example.MyClass.<init>")
 fun hookConstructor(name: String) {
     val name = "Modified"
-    callOrigin<Unit>()
+    callOrigin<Unit>()  // 调用原构造方法
 }
 ```
 
-### 特性说明
+### 构造方法 Hook 重要规则
 
-- constructor 会保留原有的 property 初始化逻辑
-- init {} 块会照常执行
-- 参数覆盖与 callOrigin() 完整可用
-- 可使用 getThisRef<T>() 获取 constructor 内部的 this
-
----
-
-## 使用 getThisRef<T>() 获取 this
-
-在 hook 方法（包括 constructor）内部，可以通过 getThisRef<T>() 获取当前实例：
-
-```kotlin
-getThisRef<MyClass>()
-```
-
-示例：
-
-```kotlin
-@EzHook("com.example.MyClass.test")
-fun newTest(name: String): String {
-    val self = getThisRef<MyClass>()
-    return "value = ${self.someProp}"
-}
-```
+- 构造方法有 `this` → 可用 `getThisRef<T>()`
+- **isInitializeProperty 仅作用于主构造方法**
+- isInitializeProperty 控制 **属性初始化器是否在 Hook 之前运行**
+- `init {}` 会在你调用 callOrigin 时运行  
+  若不调用 callOrigin → init 与构造体内部逻辑都不会执行
 
 ---
 
-## Hook property（包括 getter / setter / backing field）
+# 获取 this 引用
 
-EzHook 支持：
+```kotlin
+val self = getThisRef<MyClass>()
+```
 
-- hook getter
-- hook setter
-- hook backing field initializer
-- hook top‑level property
+可用于：
 
-### 示例
+- 成员函数 Hook
+- 构造方法 Hook
+- 属性 getter / setter Hook
+
+不可用于：
+
+- 顶层函数 Hook
+
+---
+
+# Hook 属性（Property Hook）
+
+EzHook 可 Hook：
+
+- getter
+- setter
+- 整体 var 属性
+- 顶层属性
+- 委托属性（delegate）
+
+---
+
+## 属性 Hook 示例
 
 ```kotlin
 @EzHook("com.example.MyClass.prop")
 var newProp = "777777"
     get() = callOrigin<String>() + "3333"
-    set(value) { field = value + "22222" }
+    set(value) { setField(value + "22222") }
 ```
 
-EzHook 会将 target property 的 getter/setter/backingField 重定向到你的 hook property。
+### 属性相关行为说明
+
+- `getField()` / `setField()` 操作 backing field
+- 若目标是委托属性 → `getField()` 返回 **委托对象本身**
+- 若该属性初始化器中调用了 EzHook runtime 方法（如 getThisRef）  
+  → **该初始化器将在编译期被移除**（避免构造期触发 NotImplementedError）
 
 ---
 
-## Inline Hook（特别适用于 Kotlin/JS）
-
-Kotlin/JS 很容易出现模块循环依赖问题，使用 inline hook 可以避免此问题。
-
-当 inline = true 时：
-
-- hook 函数会复制到目标模块
-- 不会产生跨模块依赖
-- 大幅提升 JS 平台的稳定性
-
-示例：
+# Hook Getter
 
 ```kotlin
-@EzHook("kotlin.time.Duration.toInt", true)
-fun toInt(unit: DurationUnit): Int {
-    val unit = DurationUnit.HOURS
-    return callOrigin<Int>()
+@EzHook.Before("com.example.MyClass.prop.get")
+fun beforeGet() {
+    println("before getter")
+}
+```
+
+# Hook Setter
+
+```kotlin
+@EzHook.After("com.example.MyClass.prop.set")
+fun afterSet(value: String) {
+    println("setter finished with $value")
 }
 ```
 
 ---
 
-## Hook 顶层函数与顶层属性
+# Before / After Hook
 
-EzHook 同样支持 top‑level 函数和 property：
-
-### 顶层函数：
+### Before：在目标前执行
 
 ```kotlin
-@EzHook("com.example.topLevelFunctionTest")
-fun topLevelFunctionTest(name: String): String {
+@EzHook.Before("com.example.MyClass.test")
+fun beforeTest(name: String) {
+    println("before test")
+}
+```
+
+### After：在目标后执行
+若返回类型非 Unit → 覆盖目标的返回值
+
+```kotlin
+@EzHook.After("com.example.MyClass.test")
+fun afterTest(name: String): String {
+    return "hooked result"
+}
+```
+
+---
+
+# NULL Hook（强制返回 null）
+
+NULL Hook 将目标替换成直接返回 null。
+
+```kotlin
+@EzHook.NULL("com.example.MyClass.loadData")
+fun forceNull() = null
+```
+
+### 构造方法的 NULL Hook 特殊规则
+
+- 原构造体内部逻辑 **不执行**
+- 所有 init {...} 块 **永远不会执行**
+- isInitializeProperty 控制是否要初始化属性：
+   - true → Kotlin 属性初始化器依然运行
+   - false → 所有属性保持未初始化状态（即使类型为非空）  
+     Kotlin/Native 访问未初始化属性可能**直接崩溃（非 NPE）**
+
+---
+
+# 访问 Backing Field
+
+### getField()
+
+```kotlin
+val oldValue = getField<String>()
+```
+
+### setField()
+
+```kotlin
+setField(value + " modified")
+```
+
+委托属性注意：
+
+- getField 返回的是 **委托对象**，不是内部 value
+
+---
+
+# 访问 this 的属性
+
+### getThisProperty()
+
+```kotlin
+val username = getThisProperty<String>("username")
+```
+
+### setThisProperty()
+
+```kotlin
+setThisProperty("count", 5)
+```
+
+若 `isBackingField = true` → 直接操作 backing field  
+否则按 getter/setter 逻辑执行。
+
+---
+
+# Hook 顶层函数
+
+```kotlin
+@EzHook("com.example.topLevelFunction")
+fun topLevelFunction(name: String): String {
     val name = "override"
-    return "before: ${callOrigin<String>()}, after: $name"
+    return "origin: ${callOrigin<String>()}, new: $name"
 }
 ```
 
-### 顶层属性：
+---
+
+# Hook 顶层属性
 
 ```kotlin
 @EzHook("com.example.topLevelProp")
 var topLevelProp = "666"
-    get() = field + "444"
-    set(value) { field = value + "555" }
+    get() = getField<String>() + "444"
+    set(value) { setField(value + "555") }
 ```
 
 ---
 
-## Hook 扩展函数（Extension Function）
-
-EzHook 支持扩展函数 hook：
+# Hook 扩展函数
 
 ```kotlin
 @EzHook("com.example.getStr")
 fun Int.getStr(): String {
-    return "${callOrigin<String>()}-new2"
+    return callOrigin<String>() + "-new2"
 }
 ```
 
 ---
 
-## 限制
+# Inline Hook（推荐 JS 使用）
 
-当前限制包括：
+JS 对模块引用较敏感，Inline Hook 将 Hook 逻辑直接复制到目标模块内，避免循环依赖。
 
-- 仅支持 **Kotlin/Native** 和 **Kotlin/JS**
-- 不支持 Kotlin/JVM
-- 要求 Kotlin 版本 **2.3.0**
-- hook 方法必须为 top‑level
-- iOS 平台需要添加 `@HiddenFromObjC`
-- Kotlin/JS 强烈建议使用 inline 模式
-- 目前不支持 hook extension constructor（Kotlin 不允许）
+```kotlin
+@EzHook("kotlin.time.Duration.toInt", inline = true)
+fun toInt(unit: DurationUnit): Int {
+    return callOrigin<Int>()
+}
+```
+
+适合：
+
+- Kotlin/JS
+- 避免跨模块依赖
+- 提升兼容性
+
+---
+
+# 限制
+
+- 支持平台：**Kotlin/Native**、**Kotlin/JS**
+- 尚不支持 JVM
+- 需要 Kotlin 2.3.0
+- Hook 方法必须为 **顶层函数/属性**
+- iOS 环境 Hook 须添加 `@HiddenFromObjC`
+- 当属性 initializer 使用 EzHook runtime API 时 → initializer 会被移除
+- 对委托属性：无法在 Hook 内执行初始化逻辑，只能通过 getField/setField 操作委托对象本身

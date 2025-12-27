@@ -4,9 +4,10 @@ import org.jetbrains.kotlin.backend.common.CommonBackendContext
 import org.jetbrains.kotlin.ir.declarations.IrModuleFragment
 
 /**
- * author: wulinpeng
- * create: 2024/11/25 22:13
- * desc: Hook ir lowering phase to add custom lowering logic, compat for KN & KJS
+ * Hook ir lowering phase to add custom lowering logic, compat for KN & KJS
+ *
+ * @author wulinpeng
+ * @since 2024/11/25 22:13
  */
 interface IrLoweringHookExtension {
     companion object {

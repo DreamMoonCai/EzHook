@@ -8,9 +8,10 @@ import org.jetbrains.kotlin.ir.declarations.IrFile
 import org.jetbrains.kotlin.ir.declarations.IrModuleFragment
 
 /**
- * author: wulinpeng
- * create: 2024/11/21 22:13
  * desc: Hook ir lowering phase to add custom lowering logic
+ *
+ * @author wulinpeng
+ * @since 2024/11/21 22:13
  */
 object NativeIrLoweringHook {
     private const val NATIVE_LOWERING_PHASES_CLASS = "org.jetbrains.kotlin.backend.konan.driver.phases.NativeLoweringPhasesKt"
@@ -50,6 +51,7 @@ object NativeIrLoweringHook {
         })
     }
 
+    @Suppress("UNCHECKED_CAST")
     private fun hookLowerBeforeInlinePhase(onStart: (context: CommonBackendContext) -> Unit){
         val clazz = Class.forName(NATIVE_LOWERING_PHASES_CLASS)
         val lower = clazz.declaredFields.firstOrNull { it.name == "upgradeCallableReferencesPhase" }?.apply {
@@ -73,6 +75,7 @@ object NativeIrLoweringHook {
         })
     }
 
+    @Suppress("UNCHECKED_CAST")
     private fun hookReturnsInsertionPhase(transformer: (CommonBackendContext, IrFile) -> Unit){
         val clazz = Class.forName(NATIVE_LOWERING_PHASES_CLASS)
         val lower = clazz.declaredFields.firstOrNull { it.name == "ReturnsInsertionPhase" }?.apply {

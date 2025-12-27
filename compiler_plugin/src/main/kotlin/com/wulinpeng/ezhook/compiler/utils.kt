@@ -36,9 +36,8 @@ import org.jetbrains.kotlin.name.FqName
 import org.jetbrains.kotlin.name.Name
 
 /**
- * author: wulinpeng
- * create: 2024/11/22 00:09
- * desc:
+ * @author wulinpeng
+ * @since 2024/11/22 00:09
  */
 @OptIn(UnsafeDuringIrConstructionAPI::class)
 fun IrConstructorCall.defaultParamValue(index: Int): IrExpression? {

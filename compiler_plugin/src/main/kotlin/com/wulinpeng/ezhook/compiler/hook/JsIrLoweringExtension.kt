@@ -4,9 +4,10 @@ import org.jetbrains.kotlin.backend.common.CommonBackendContext
 import org.jetbrains.kotlin.ir.declarations.IrModuleFragment
 
 /**
- * author: wulinpeng
- * create: 2024/11/25 22:13
  * desc: Hook ir lowering phase to add custom lowering logic
+ *
+ * @author wulinpeng
+ * @since 2024/11/25 22:13
  */
 object JsIrLoweringHook {
     private const val NATIVE_LOWERING_PHASES_CLASS = "org.jetbrains.kotlin.ir.backend.js.JsLoweringPhasesKt"
@@ -41,6 +42,7 @@ object JsIrLoweringHook {
         }
     }
 
+    @Suppress("UNCHECKED_CAST")
     private fun hookLoweringPhase(phaseName: String, transformer: (CommonBackendContext, IrModuleFragment) -> Unit) {
         val clazz = Class.forName(NATIVE_LOWERING_PHASES_CLASS)
         val lower = clazz.declaredFields.firstOrNull { it.name == phaseName }?.apply {
