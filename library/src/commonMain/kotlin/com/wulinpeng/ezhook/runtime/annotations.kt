@@ -33,6 +33,8 @@ package com.wulinpeng.ezhook.runtime
  * @property isInitializeProperty Whether class properties with initializers should be
  *                                automatically initialized when this hook is applied
  *                                to the primary constructor.
+ * @author wulinpeng
+ * @since 2024/11/21 22:55
  */
 @Target(AnnotationTarget.FUNCTION, AnnotationTarget.PROPERTY)
 @Retention(AnnotationRetention.BINARY)
