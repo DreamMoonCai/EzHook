@@ -20,7 +20,7 @@ EzHook consists of two components:
 
 ---
 
-## 1. Apply the Gradle Plugin
+## 1. Apply the Gradle Plugin(Need to publish to local repository by oneself)
 
 ```kotlin
 buildscript {
@@ -36,7 +36,7 @@ plugins {
 
 ---
 
-## 2. Add the Runtime Library
+## 2. Add the Runtime Library(No need after using the plugin)
 
 ```kotlin
 kotlin {

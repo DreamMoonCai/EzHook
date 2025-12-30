@@ -12,6 +12,7 @@ import org.jetbrains.kotlin.backend.common.lower.createIrBuilder
 import org.jetbrains.kotlin.backend.common.lower.irBlockBody
 import org.jetbrains.kotlin.ir.IrStatement
 import org.jetbrains.kotlin.ir.builders.IrBuilder
+import org.jetbrains.kotlin.ir.builders.IrBuilderWithScope
 import org.jetbrains.kotlin.ir.builders.createTmpVariable
 import org.jetbrains.kotlin.ir.builders.declarations.addValueParameter
 import org.jetbrains.kotlin.ir.builders.irBlock
@@ -41,6 +42,7 @@ import org.jetbrains.kotlin.ir.expressions.IrExpression
 import org.jetbrains.kotlin.ir.expressions.IrFunctionAccessExpression
 import org.jetbrains.kotlin.ir.expressions.IrGetField
 import org.jetbrains.kotlin.ir.expressions.IrGetValue
+import org.jetbrains.kotlin.ir.expressions.IrMemberAccessExpression
 import org.jetbrains.kotlin.ir.expressions.IrReturn
 import org.jetbrains.kotlin.ir.expressions.IrSetField
 import org.jetbrains.kotlin.ir.symbols.UnsafeDuringIrConstructionAPI
@@ -357,7 +359,11 @@ class EzHookIrTransformer(val collectInfos: EzHookInfo, val pluginContext: Commo
                 return@irBlockBody
             }
             val result = createTmpVariable(
-                irExpression = irBlock(resultType = function.returnType) { +function.body!!.statements },
+                irExpression = irBlock(resultType = function.returnType) { +irCall(newFunction).apply {
+                    function.parameters.forEachIndexed { index, parameter ->
+                        arguments[index] = irGet(parameter)
+                    }
+                } },
                 nameHint = "originalReturnValue",
                 origin = IrDeclarationOrigin.DEFINED
             )
@@ -396,19 +402,18 @@ class EzHookIrTransformer(val collectInfos: EzHookInfo, val pluginContext: Commo
         }, null)
     }
 
+    fun getThisReceiver(function: IrFunction) = if (function is IrConstructor)
+        function.constructedClass.thisReceiver
+    else
+        function.dispatchReceiverParameter
+
     fun IrBuilder.callHookFunction(function: IrFunction, hookFunction: IrFunction): IrFunctionAccessExpression {
-        val receiver = if (function is IrConstructor)
+        val receiver = getThisReceiver(function)?.let { oldReceiver ->
             hookFunction.parameters.find { it.name == THIS_REF_PARAM_NAME } ?: hookFunction.addValueParameter(
                 THIS_REF_PARAM_NAME,
-                (function.constructedClass.thisReceiver ?: error("not thisReceiver in $function")).type
+                oldReceiver.type
             )
-        else
-            function.parameters.find { it.kind == IrParameterKind.DispatchReceiver }?.let { oldReceiver ->
-                hookFunction.parameters.find { it.name == THIS_REF_PARAM_NAME } ?: hookFunction.addValueParameter(
-                    THIS_REF_PARAM_NAME,
-                    oldReceiver.type
-                )
-            }
+        }
         return irCall(hookFunction).apply {
             function.parameters.filter { it.kind != IrParameterKind.DispatchReceiver }
                 .forEachIndexed { index, param ->
@@ -431,6 +436,7 @@ class EzHookIrTransformer(val collectInfos: EzHookInfo, val pluginContext: Commo
         hookInfo: EzHookInfo.Function? = findHookFunctionInfo(function),
         isLogger: Boolean = true
     ): IrStatement? {
+        if ((function as? IrSimpleFunction)?.correspondingPropertySymbol != null) return null
         val hookInfo = hookInfo ?: return null
         if (processedDeclaration.contains(function)) return null
         processedDeclaration.add(function)
@@ -511,7 +517,11 @@ class EzHookIrTransformer(val collectInfos: EzHookInfo, val pluginContext: Commo
                 return@irBlockBody
             }
             val result = createTmpVariable(
-                irExpression = irBlock(resultType = function.returnType) { +function.body!!.statements },
+                irExpression = irBlock(resultType = function.returnType) { +irCall(newFunction).apply {
+                    function.parameters.forEachIndexed { index, parameter ->
+                        arguments[index] = irGet(parameter)
+                    }
+                } },
                 nameHint = "originalReturnValue",
                 origin = IrDeclarationOrigin.DEFINED
             )
@@ -689,12 +699,10 @@ class EzHookCallOriginTransformer(
                 else -> null
             }
         }
-    }
 
-    @OptIn(UnsafeDuringIrConstructionAPI::class)
-    override fun visitCall(expression: IrCall): IrExpression = context.createIrBuilder(hookFunction.symbol).run {
-        when (expression.symbol.owner.fqNameWhenAvailable?.asString()) {
-            CALL_ORIGIN -> irCall(targetFunction.symbol).apply {
+        @OptIn(UnsafeDuringIrConstructionAPI::class)
+        fun buildCallOrigin(builder: IrBuilderWithScope,targetFunction: IrFunction, hookFunction: IrFunction, argument: IrMemberAccessExpression<*>.ValueArgumentsList) = builder.run {
+            irCall(targetFunction.symbol).apply {
                 // for class member function, make the last param as dispatch receiver
                 hookFunction.parameters.find { it.name == EzHookIrTransformer.THIS_REF_PARAM_NAME }?.let { thisRef ->
                     targetFunction.parameters.find { it.kind == IrParameterKind.DispatchReceiver }?.let { thisParam ->
@@ -713,7 +721,7 @@ class EzHookCallOriginTransformer(
                             arguments[parameter] = irGet(extension)
                         } else {
                             // case 2：callOrigin(xxx) 有参调用
-                            val providedArg = expression.arguments.getOrNull(index)
+                            val providedArg = argument.getOrNull(index)
 
                             // 如果参数是 var 覆盖 shadow variable，就用 overrideParams
 
@@ -737,6 +745,13 @@ class EzHookCallOriginTransformer(
                         }
                     }
             }
+        }
+    }
+
+    @OptIn(UnsafeDuringIrConstructionAPI::class)
+    override fun visitCall(expression: IrCall): IrExpression = context.createIrBuilder(hookFunction.symbol).run {
+        when (expression.symbol.owner.fqNameWhenAvailable?.asString()) {
+            CALL_ORIGIN -> buildCallOrigin(this,targetFunction, hookFunction, expression.arguments)
 
             GET_THIS_REF -> {
                 val getThis = hookFunction.parameters.find { it.name == EzHookIrTransformer.THIS_REF_PARAM_NAME }
