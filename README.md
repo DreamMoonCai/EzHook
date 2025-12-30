@@ -76,8 +76,11 @@ A hook function must:
 
 - Be a **top‑level function**
 - Have the **same parameter list** as the target
-- Have the **same return type**
-- Optionally override parameters (same name, same type)
+- The parameter list must be consistent with the target
+- Can be used for external methods
+- Can modify delegation attributes, expand attributes, expand functions, and construct methods
+- There is a mandatory requirement for consistency only when replacing attribute types, and there are no requirements before or after interception
+- Function does not require consistent return type
 - Optionally call the original via `callOrigin()`
 
 ---
@@ -269,6 +272,7 @@ setField(value + " modified")
 Delegated property case:
 
 - `getField()` returns the **delegate instance**, not its internal value.
+- Also supports the use of regular field keywords, with the same effect
 
 ---
 
