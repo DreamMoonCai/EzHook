@@ -7,7 +7,7 @@ plugins {
 
 buildscript {
     dependencies {
-        classpath("io.github.xdmrwu:ez-hook-gradle-plugin:0.0.3")
+        classpath("io.github.dreammooncai:ez-hook-gradle-plugin:0.0.3")
     }
     repositories {
         mavenCentral()

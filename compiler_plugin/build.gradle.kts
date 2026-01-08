@@ -30,11 +30,12 @@ dependencies {
 mavenPublishing {
     publishToMavenCentral(SonatypeHost.CENTRAL_PORTAL)
     signAllPublications()
-    coordinates("io.github.xdmrwu", "ez-hook-compiler-plugin", "0.0.3")
+    coordinates("io.github.dreammooncai", "ez-hook-compiler-plugin", "0.0.3")
 
     pom {
+        name.set("EzHook")
         description.set("An AOP framework for KotlinMultiplatform, supporting Kotlin/Native and Kotlin/JS")
-        url.set("https://github.com/XDMrWu/EzHook/")
+        url.set("https://github.com/DreamMoonCai/EzHook/")
         licenses {
             license {
                 name.set("The Apache License, Version 2.0")
@@ -44,15 +45,15 @@ mavenPublishing {
         }
         developers {
             developer {
-                id.set("XDMrWu")
-                name.set("wulinpeng")
-                url.set("https://github.com/XDMrWu/")
+                id.set("DreamMoonCai")
+                name.set("dreammoon")
+                url.set("https://github.com/DreamMoonCai/")
             }
         }
         scm {
-            url.set("https://github.com/XDMrWu/EzHook")
-            connection.set("scm:git:git://github.com/XDMrWu/EzHook.git")
-            developerConnection.set("scm:git:ssh://git@github.com/XDMrWu/EzHook.git")
+            url.set("https://github.com/DreamMoonCai/EzHook")
+            connection.set("scm:git:git://github.com/DreamMoonCai/EzHook.git")
+            developerConnection.set("scm:git:ssh://git@github.com/DreamMoonCai/EzHook.git")
         }
     }
 }

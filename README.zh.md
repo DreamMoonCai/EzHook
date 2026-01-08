@@ -18,17 +18,17 @@ EzHook 由两部分组成：
 
 ---
 
-## 1. 添加 Gradle 插件(需要自己发布到本地仓库)
+## 1. 添加 Gradle 插件
 
 ```kotlin
 buildscript {
     dependencies {
-        classpath("io.github.xdmrwu:ez-hook-gradle-plugin:0.0.3")
+        classpath("io.github.dreammooncai:ez-hook-gradle-plugin:0.0.3")
     }
 }
 
 plugins {
-    id("io.github.xdmrwu.ez-hook-gradle-plugin")
+    id("io.github.dreammooncai.ez-hook-gradle-plugin")
 }
 ```
 
@@ -40,7 +40,7 @@ plugins {
 kotlin {
     sourceSets {
         commonMain.dependencies {
-            implementation("io.github.xdmrwu:ez-hook-library:0.0.3")
+            implementation("io.github.dreammooncai:ez-hook-library:0.0.3")
         }
     }
 }

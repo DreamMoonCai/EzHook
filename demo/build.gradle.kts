@@ -12,7 +12,7 @@ repositories {
 
 plugins {
     alias(libs.plugins.kotlinMultiplatform)
-    id("io.github.xdmrwu.ez-hook-gradle-plugin")
+    id("io.github.dreammooncai.ez-hook-gradle-plugin")
 }
 
 kotlin {

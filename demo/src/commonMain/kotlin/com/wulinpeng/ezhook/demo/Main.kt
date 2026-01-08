@@ -34,7 +34,6 @@ fun main() {
     testCase("NormalCase3",test.testReParam("origin name",18))
 
     testCase("NormalCase4",test.testLazy)
-
 }
 
 fun testCase(caseName: String, result: String) {

@@ -20,17 +20,17 @@ EzHook consists of two components:
 
 ---
 
-## 1. Apply the Gradle Plugin(Need to publish to local repository by oneself)
+## 1. Apply the Gradle Plugin
 
 ```kotlin
 buildscript {
     dependencies {
-        classpath("io.github.xdmrwu:ez-hook-gradle-plugin:0.0.3")
+        classpath("io.github.dreammooncai:ez-hook-gradle-plugin:0.0.3")
     }
 }
 
 plugins {
-    id("io.github.xdmrwu.ez-hook-gradle-plugin")
+    id("io.github.dreammooncai.ez-hook-gradle-plugin")
 }
 ```
 
@@ -42,7 +42,7 @@ plugins {
 kotlin {
     sourceSets {
         commonMain.dependencies {
-            implementation("io.github.xdmrwu:ez-hook-library:0.0.3")
+            implementation("io.github.dreammooncai:ez-hook-library:0.0.3")
         }
     }
 }
