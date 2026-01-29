@@ -1,13 +1,10 @@
-import org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi
-import org.jetbrains.kotlin.gradle.dsl.JvmTarget
-import com.vanniktech.maven.publish.SonatypeHost
 
 plugins {
     id("java-gradle-plugin")
     `maven-publish`
     kotlin("jvm")
     kotlin("kapt")
-    id("com.vanniktech.maven.publish") version "0.30.0"
+    id("com.vanniktech.maven.publish") version "0.35.0"
 }
 
 dependencies {
@@ -20,9 +17,9 @@ dependencies {
 
 
 mavenPublishing {
-    publishToMavenCentral(SonatypeHost.CENTRAL_PORTAL)
+    publishToMavenCentral()
     signAllPublications()
-    coordinates("io.github.dreammooncai", "ez-hook-gradle-plugin", "0.0.3")
+    coordinates("io.github.dreammooncai", "ez-hook-gradle-plugin", "0.0.4")
 
     pom {
         name.set("EzHook")

@@ -27,7 +27,7 @@ class EzHookGradlePlugin: KotlinCompilerPluginSupportPlugin {
         project = target
         target.extensions.configure(KotlinMultiplatformExtension::class.java) {
             it.sourceSets.getByName("commonMain").dependencies {
-                implementation("io.github.dreammooncai:ez-hook-library:0.0.3")
+                implementation("io.github.dreammooncai:ez-hook-library:0.0.4")
             }
         }
     }

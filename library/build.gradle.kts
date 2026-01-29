@@ -1,7 +1,4 @@
-import org.gradle.kotlin.dsl.jvm
-import org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
-import com.vanniktech.maven.publish.SonatypeHost
 
 repositories {
     mavenCentral()
@@ -16,13 +13,13 @@ plugins {
     alias(libs.plugins.kotlinMultiplatform)
     alias(libs.plugins.androidLibrary)
     `maven-publish`
-    id("com.vanniktech.maven.publish") version "0.30.0"
+    id("com.vanniktech.maven.publish") version "0.35.0"
 }
 
 mavenPublishing {
-    publishToMavenCentral(SonatypeHost.CENTRAL_PORTAL)
+    publishToMavenCentral()
     signAllPublications()
-    coordinates("io.github.dreammooncai", "ez-hook-library", "0.0.3")
+    coordinates("io.github.dreammooncai", "ez-hook-library", "0.0.4")
 
     pom {
         name.set("EzHook")
@@ -61,7 +58,12 @@ publishing {
 
 kotlin {
 
-    androidTarget()
+    androidLibrary {
+        namespace = "com.wulinpeng.ezhook"
+        compileSdk = 36
+        minSdk = 26
+        compilerOptions.jvmTarget.set(JvmTarget.valueOf("JVM_${JavaVersion.current().majorVersion}"))
+    }
 
     androidNativeArm64()
     androidNativeArm32()
@@ -101,9 +103,4 @@ kotlin {
             // put your Multiplatform dependencies here
         }
     }
-}
-
-android {
-    namespace = "com.wulinpeng.ezhook"  // 替换为你的实际包名
-    compileSdkVersion(34)          // 替换为你的编译 SDK 版本
 }

@@ -25,7 +25,7 @@ EzHook consists of two components:
 ```kotlin
 buildscript {
     dependencies {
-        classpath("io.github.dreammooncai:ez-hook-gradle-plugin:0.0.3")
+        classpath("io.github.dreammooncai:ez-hook-gradle-plugin:0.0.4")
     }
 }
 
@@ -42,7 +42,7 @@ plugins {
 kotlin {
     sourceSets {
         commonMain.dependencies {
-            implementation("io.github.dreammooncai:ez-hook-library:0.0.3")
+            implementation("io.github.dreammooncai:ez-hook-library:0.0.4")
         }
     }
 }
